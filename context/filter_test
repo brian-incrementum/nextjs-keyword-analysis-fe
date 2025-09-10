@@ -1,0 +1,43 @@
+# pip install nltk
+import re
+from typing import List, Tuple
+import nltk
+from nltk.stem import WordNetLemmatizer
+
+nltk.download("wordnet", quiet=True)
+nltk.download("omw-1.4", quiet=True)
+
+lemmatizer = WordNetLemmatizer()
+
+def clean_text(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r'[\"\'()+*,.:;!?/#]', ' ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+def lemma_phrase(phrase: str) -> str:
+    tokens = clean_text(phrase).split()
+    return " ".join(lemmatizer.lemmatize(t, pos="n") for t in tokens)
+
+def filter_keywords(keywords: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
+    # keep only the highest volume per lemmatized phrase
+    best = {}
+    for kw, vol in keywords:
+        root = lemma_phrase(kw)
+        if root not in best or vol > best[root][1]:
+            best[root] = (kw, vol)
+    return sorted(best.values(), key=lambda x: x[1], reverse=True)
+
+# example
+data = [
+    ("dog treats", 50000),
+    ("dog treat", 20000),
+    ("organic dog treats", 12000),
+    ("teeth whitening", 18000),
+    ("tooth whitening", 22000),
+    ("mouse repellent", 12000),
+    ("mice repellent", 8000),
+]
+
+for kw, vol in filter_keywords(data):
+    print(kw, vol)

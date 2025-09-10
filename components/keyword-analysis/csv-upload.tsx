@@ -186,7 +186,8 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
 
           setCSVData(csvDataObj);
         },
-        error: (error) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error: (error: any) => {
           console.error('Parse error:', error);
           setIsProcessing(false);
           setError(`Error reading file: ${error.message}`);
@@ -335,7 +336,8 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
             keywordMeta,
           });
         },
-        error: (error) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error: (error: any) => {
           setIsProcessing(false);
           setError(`Error processing keywords: ${error.message}`);
         },

@@ -69,7 +69,7 @@ export function VirtualizedResultsTable({
 }: VirtualizedResultsTableProps) {
   console.log(`[TABLE DEBUG] Received ${results.length} results and ${groups.length} groups to display`);
   
-  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('flat');
+  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('grouped');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');

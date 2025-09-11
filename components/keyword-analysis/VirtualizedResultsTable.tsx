@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ExportDropdown } from '@/components/keyword-analysis/export-dropdown';
 import { ScoreFilterMultiSelect } from '@/components/keyword-analysis/score-filter-multi-select';
+import { KeywordTagInput } from '@/components/keyword-analysis/keyword-tag-input';
 import type { KeywordResult, GroupedKeywordResult } from '@/types/keyword-analysis';
 
 interface VirtualizedResultsTableProps {
@@ -75,6 +76,8 @@ export function VirtualizedResultsTable({
   const [globalFilter, setGlobalFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [scoreFilter, setScoreFilter] = useState<string[]>(['all']);
+  const [includeKeywords, setIncludeKeywords] = useState<string[]>([]);
+  const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
   
   // Debounce the global filter to prevent stuttering
   const debouncedGlobalFilter = useDebounce(globalFilter, 200);
@@ -107,6 +110,26 @@ export function VirtualizedResultsTable({
       );
     }
     
+    // Apply include keywords filter - item must contain at least one include keyword
+    if (includeKeywords.length > 0) {
+      filtered = filtered.filter(item => 
+        includeKeywords.some(keyword => 
+          item.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+          item.reasoning?.toLowerCase().includes(keyword.toLowerCase())
+        )
+      );
+    }
+    
+    // Apply exclude keywords filter - item must not contain any exclude keyword
+    if (excludeKeywords.length > 0) {
+      filtered = filtered.filter(item =>
+        !excludeKeywords.some(keyword =>
+          item.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+          item.reasoning?.toLowerCase().includes(keyword.toLowerCase())
+        )
+      );
+    }
+    
     // Apply sorting
     if (sortConfig) {
       filtered.sort((a, b) => {
@@ -120,7 +143,7 @@ export function VirtualizedResultsTable({
     }
     
     return filtered;
-  }, [results, typeFilter, scoreFilter, debouncedGlobalFilter, sortConfig]);
+  }, [results, typeFilter, scoreFilter, debouncedGlobalFilter, sortConfig, includeKeywords, excludeKeywords]);
 
   // Flatten groups for grouped view
   const flattenedGroups = useMemo(() => {
@@ -131,10 +154,10 @@ export function VirtualizedResultsTable({
     // Apply same filters to groups
     let filteredGroups = groups;
     if (typeFilter !== 'all') {
-      filteredGroups = groups.filter(g => g.parent.type === typeFilter);
+      filteredGroups = filteredGroups.filter(g => g.parent.type === typeFilter);
     }
     if (!scoreFilter.includes('all') && scoreFilter.length > 0) {
-      filteredGroups = groups.filter(g => {
+      filteredGroups = filteredGroups.filter(g => {
         if (scoreFilter.includes('high') && g.parent.score >= 8) return true;
         if (scoreFilter.includes('medium') && g.parent.score >= 5 && g.parent.score <= 7) return true;
         if (scoreFilter.includes('low') && g.parent.score <= 4) return true;
@@ -143,12 +166,40 @@ export function VirtualizedResultsTable({
     }
     if (debouncedGlobalFilter) {
       const searchTerm = debouncedGlobalFilter.toLowerCase();
-      filteredGroups = groups.filter(g => 
+      filteredGroups = filteredGroups.filter(g => 
         g.parent.keyword.toLowerCase().includes(searchTerm) ||
         g.parent.reasoning?.toLowerCase().includes(searchTerm) ||
         g.variations.some(v => 
           v.keyword.toLowerCase().includes(searchTerm) ||
           v.reasoning?.toLowerCase().includes(searchTerm)
+        )
+      );
+    }
+    
+    // Apply include keywords filter to groups
+    if (includeKeywords.length > 0) {
+      filteredGroups = filteredGroups.filter(g => 
+        includeKeywords.some(keyword => 
+          g.parent.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+          g.parent.reasoning?.toLowerCase().includes(keyword.toLowerCase()) ||
+          g.variations.some(v => 
+            v.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+            v.reasoning?.toLowerCase().includes(keyword.toLowerCase())
+          )
+        )
+      );
+    }
+    
+    // Apply exclude keywords filter to groups
+    if (excludeKeywords.length > 0) {
+      filteredGroups = filteredGroups.filter(g =>
+        !excludeKeywords.some(keyword =>
+          g.parent.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+          g.parent.reasoning?.toLowerCase().includes(keyword.toLowerCase()) ||
+          g.variations.some(v => 
+            v.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
+            v.reasoning?.toLowerCase().includes(keyword.toLowerCase())
+          )
         )
       );
     }
@@ -166,7 +217,7 @@ export function VirtualizedResultsTable({
     }
     
     return flattened;
-  }, [groups, viewMode, typeFilter, scoreFilter, debouncedGlobalFilter]);
+  }, [groups, viewMode, typeFilter, scoreFilter, debouncedGlobalFilter, includeKeywords, excludeKeywords]);
 
   const handleSort = useCallback((key: keyof KeywordResult) => {
     setSortConfig(current => {
@@ -246,6 +297,22 @@ export function VirtualizedResultsTable({
       </>
     );
   }, [viewMode]);
+  
+  const handleAddIncludeKeyword = useCallback((keyword: string) => {
+    setIncludeKeywords(prev => [...prev, keyword]);
+  }, []);
+  
+  const handleRemoveIncludeKeyword = useCallback((keyword: string) => {
+    setIncludeKeywords(prev => prev.filter(k => k !== keyword));
+  }, []);
+  
+  const handleAddExcludeKeyword = useCallback((keyword: string) => {
+    setExcludeKeywords(prev => [...prev, keyword]);
+  }, []);
+  
+  const handleRemoveExcludeKeyword = useCallback((keyword: string) => {
+    setExcludeKeywords(prev => prev.filter(k => k !== keyword));
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -353,6 +420,32 @@ export function VirtualizedResultsTable({
                   onExport(format, exportData);
                 }}
                 isGroupedView={viewMode === 'grouped'}
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Include Keywords
+              </label>
+              <KeywordTagInput
+                placeholder="Type keyword and press Enter to include..."
+                tags={includeKeywords}
+                onAddTag={handleAddIncludeKeyword}
+                onRemoveTag={handleRemoveIncludeKeyword}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Exclude Keywords
+              </label>
+              <KeywordTagInput
+                placeholder="Type keyword and press Enter to exclude..."
+                tags={excludeKeywords}
+                onAddTag={handleAddExcludeKeyword}
+                onRemoveTag={handleRemoveExcludeKeyword}
               />
             </div>
           </div>

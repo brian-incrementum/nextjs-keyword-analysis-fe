@@ -132,27 +132,38 @@ export default function KeywordAnalysisPage() {
         });
       }, 1000); // Update every second for smoother feedback
 
+      console.log(`[DEBUG] Sending ${keywordList.length} keywords to API`);
+      
       const response: KeywordAnalysisResponse = await apiClient.analyzeKeywords({
         product: productInput,
         keywords: keywordList,
       });
 
       clearInterval(progressInterval);
+      
+      console.log(`[DEBUG] API returned ${response.analysis_results?.length || 0} results`);
+      console.log(`[DEBUG] API summary says analyzed: ${response.summary?.analyzed || 0} keywords`);
 
       // Convert API response to display format
       const displayResults = APIClient.convertToDisplayFormat(response.analysis_results);
+      console.log(`[DEBUG] After conversion: ${displayResults.length} display results`);
       
       // Process keywords in worker for grouping and enrichment
       try {
+        console.log(`[DEBUG] Sending ${displayResults.length} results to worker for processing`);
         const { results: processedResults, groups: processedGroups } = await processKeywords(
           displayResults,
           keywordMeta || csvData?.keywordMeta
         );
+        console.log(`[DEBUG] Worker returned ${processedResults.length} processed results`);
+        console.log(`[DEBUG] Worker created ${processedGroups.length} groups`);
         setResults(processedResults);
         setGroups(processedGroups);
+        console.log(`[DEBUG] State updated with ${processedResults.length} results`);
       } catch (error) {
         console.error('Worker processing error:', error);
         // Fallback to non-grouped results
+        console.log(`[DEBUG] Worker failed, falling back to ${displayResults.length} ungrouped results`);
         setResults(displayResults);
         setGroups([]);
       }
@@ -165,6 +176,12 @@ export default function KeywordAnalysisPage() {
         message: 'Analysis completed successfully!',
       });
 
+      // Check for discrepancy
+      if (keywordList.length !== response.summary.analyzed) {
+        console.warn(`[WARNING] Keyword count mismatch! Sent: ${keywordList.length}, Analyzed: ${response.summary.analyzed}`);
+        toast.warning(`Note: Sent ${keywordList.length} keywords but only ${response.summary.analyzed} were analyzed`);
+      }
+      
       setTimeout(() => {
         setCurrentStep('results');
         toast.success(`Analysis completed! Analyzed ${response.summary.analyzed} keywords with average score ${response.summary.average_score.toFixed(1)}/10`);

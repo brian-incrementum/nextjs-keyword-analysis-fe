@@ -67,6 +67,8 @@ export function VirtualizedResultsTable({
   onExport, 
   summary 
 }: VirtualizedResultsTableProps) {
+  console.log(`[TABLE DEBUG] Received ${results.length} results and ${groups.length} groups to display`);
+  
   const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('flat');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [globalFilter, setGlobalFilter] = useState('');

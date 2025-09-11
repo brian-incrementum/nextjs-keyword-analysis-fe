@@ -203,6 +203,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
       const { keywords, keywordMeta } = data;
       
       // Send initial progress
+      console.log(`[WORKER DEBUG] Received ${keywords.length} keywords for processing`);
       self.postMessage({
         type: 'PROGRESS',
         data: {
@@ -232,6 +233,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
         } as WorkerResponse);
       } else {
         // Send completion
+        console.log(`[WORKER DEBUG] Completed processing: ${results.length} results, ${groups.length} groups`);
         self.postMessage({
           type: 'COMPLETE',
           data: {

@@ -5,9 +5,11 @@ import { toast } from 'sonner';
 import { ProductInputComponent } from '@/components/keyword-analysis/product-input';
 import { CSVUploadComponent } from '@/components/keyword-analysis/csv-upload';
 import { AnalysisProcessComponent } from '@/components/keyword-analysis/analysis-process';
-import { ResultsTableWithGrouping } from '@/components/keyword-analysis/results-table-with-grouping';
+import { VirtualizedResultsTable } from '@/components/keyword-analysis/VirtualizedResultsTable';
 import { apiClient, APIClient } from '@/lib/utils/api-client';
 import { exportToCSV, exportToExcel } from '@/lib/utils/csv-export';
+import { useKeywordProcessor } from '@/lib/hooks/useKeywordProcessor';
+import type { GroupedKeywordResult } from '@/types/keyword-analysis';
 import type { 
   ProductInput, 
   CSVData, 
@@ -29,8 +31,10 @@ export default function KeywordAnalysisPage() {
     progress: 0,
   });
   const [results, setResults] = useState<KeywordResult[]>([]);
+  const [groups, setGroups] = useState<GroupedKeywordResult[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { processKeywords, cancelProcessing, state: processorState } = useKeywordProcessor();
 
   const handleProductSubmit = useCallback((data: ProductInput) => {
     setProductInput(data);
@@ -136,16 +140,23 @@ export default function KeywordAnalysisPage() {
       clearInterval(progressInterval);
 
       // Convert API response to display format
-      let displayResults = APIClient.convertToDisplayFormat(response.analysis_results);
-      // Enrich with CSV-provided metadata (e.g., search volume)
-      const meta = keywordMeta || csvData?.keywordMeta;
-      if (meta) {
-        displayResults = displayResults.map(r => ({
-          ...r,
-          searchVolume: meta?.[r.keyword?.toString().trim().toLowerCase()]?.searchVolume ?? r.searchVolume,
-        }));
+      const displayResults = APIClient.convertToDisplayFormat(response.analysis_results);
+      
+      // Process keywords in worker for grouping and enrichment
+      try {
+        const { results: processedResults, groups: processedGroups } = await processKeywords(
+          displayResults,
+          keywordMeta || csvData?.keywordMeta
+        );
+        setResults(processedResults);
+        setGroups(processedGroups);
+      } catch (error) {
+        console.error('Worker processing error:', error);
+        // Fallback to non-grouped results
+        setResults(displayResults);
+        setGroups([]);
       }
-      setResults(displayResults);
+      
       setSummary(response.summary);
       
       setAnalysisState({
@@ -193,7 +204,19 @@ export default function KeywordAnalysisPage() {
         processing_time: 2.5,
       };
 
-      setResults(mockResults);
+      // Process mock results through worker
+      try {
+        const { results: processedResults, groups: processedGroups } = await processKeywords(
+          mockResults,
+          meta2
+        );
+        setResults(processedResults);
+        setGroups(processedGroups);
+      } catch (error) {
+        console.error('Worker processing error:', error);
+        setResults(mockResults);
+        setGroups([]);
+      }
       setSummary(mockSummary);
       
       setAnalysisState({
@@ -230,13 +253,14 @@ export default function KeywordAnalysisPage() {
 
   const handleCancelAnalysis = useCallback(() => {
     apiClient.cancelAnalysis();
+    cancelProcessing();
     setIsAnalyzing(false);
     setAnalysisState({
       status: 'idle',
       progress: 0,
     });
     toast.info('Analysis cancelled');
-  }, []);
+  }, [cancelProcessing]);
 
   const handleRetryAnalysis = useCallback(() => {
     if (keywords.length > 0) {
@@ -282,6 +306,7 @@ export default function KeywordAnalysisPage() {
     setCSVData(null);
     setAnalysisState({ status: 'idle', progress: 0 });
     setResults([]);
+    setGroups([]);
     setSummary(null);
     setIsAnalyzing(false);
   }, []);
@@ -360,8 +385,9 @@ export default function KeywordAnalysisPage() {
         )}
 
         {currentStep === 'results' && (
-          <ResultsTableWithGrouping
+          <VirtualizedResultsTable
             results={results}
+            groups={groups}
             onExport={handleExport}
             summary={summary ? {
               average_score: summary.average_score,

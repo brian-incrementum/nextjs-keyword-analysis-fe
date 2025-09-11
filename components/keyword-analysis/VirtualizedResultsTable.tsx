@@ -22,6 +22,7 @@ import {
   List
 } from 'lucide-react';
 import { ExportDropdown } from '@/components/keyword-analysis/export-dropdown';
+import { ScoreFilterMultiSelect } from '@/components/keyword-analysis/score-filter-multi-select';
 import type { KeywordResult, GroupedKeywordResult } from '@/types/keyword-analysis';
 
 interface VirtualizedResultsTableProps {
@@ -73,7 +74,7 @@ export function VirtualizedResultsTable({
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [scoreFilter, setScoreFilter] = useState<string>('all');
+  const [scoreFilter, setScoreFilter] = useState<string[]>(['all']);
   
   // Debounce the global filter to prevent stuttering
   const debouncedGlobalFilter = useDebounce(globalFilter, 200);
@@ -88,12 +89,12 @@ export function VirtualizedResultsTable({
     }
     
     // Apply score filter
-    if (scoreFilter !== 'all') {
+    if (!scoreFilter.includes('all') && scoreFilter.length > 0) {
       filtered = filtered.filter(item => {
-        if (scoreFilter === 'high') return item.score >= 8;
-        if (scoreFilter === 'medium') return item.score >= 5 && item.score <= 7;
-        if (scoreFilter === 'low') return item.score <= 4;
-        return true;
+        if (scoreFilter.includes('high') && item.score >= 8) return true;
+        if (scoreFilter.includes('medium') && item.score >= 5 && item.score <= 7) return true;
+        if (scoreFilter.includes('low') && item.score <= 4) return true;
+        return false;
       });
     }
     
@@ -132,12 +133,12 @@ export function VirtualizedResultsTable({
     if (typeFilter !== 'all') {
       filteredGroups = groups.filter(g => g.parent.type === typeFilter);
     }
-    if (scoreFilter !== 'all') {
+    if (!scoreFilter.includes('all') && scoreFilter.length > 0) {
       filteredGroups = groups.filter(g => {
-        if (scoreFilter === 'high') return g.parent.score >= 8;
-        if (scoreFilter === 'medium') return g.parent.score >= 5 && g.parent.score <= 7;
-        if (scoreFilter === 'low') return g.parent.score <= 4;
-        return true;
+        if (scoreFilter.includes('high') && g.parent.score >= 8) return true;
+        if (scoreFilter.includes('medium') && g.parent.score >= 5 && g.parent.score <= 7) return true;
+        if (scoreFilter.includes('low') && g.parent.score <= 4) return true;
+        return false;
       });
     }
     if (debouncedGlobalFilter) {
@@ -334,17 +335,10 @@ export function VirtualizedResultsTable({
                 </SelectContent>
               </Select>
               
-              <Select value={scoreFilter} onValueChange={setScoreFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Score" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Scores</SelectItem>
-                  <SelectItem value="high">High (8-10)</SelectItem>
-                  <SelectItem value="medium">Medium (5-7)</SelectItem>
-                  <SelectItem value="low">Low (1-4)</SelectItem>
-                </SelectContent>
-              </Select>
+              <ScoreFilterMultiSelect
+                selectedScores={scoreFilter}
+                onScoreChange={setScoreFilter}
+              />
             </div>
             
             <div className="flex gap-2">

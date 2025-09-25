@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+// import { useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,7 @@ interface ExportDropdownProps {
   isGroupedView?: boolean;
 }
 
-export function ExportDropdown({ onExport, isGroupedView = false }: ExportDropdownProps) {
+export function ExportDropdown({ onExport, isGroupedView: _isGroupedView = false }: ExportDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

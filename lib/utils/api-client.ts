@@ -2,14 +2,17 @@ import type {
   KeywordAnalysisRequest, 
   KeywordAnalysisResponse,
   KeywordResult,
-  KeywordAnalysisResult
+  KeywordAnalysisResult,
+  RootAnalysisResponse,
+  RootAnalysisMember
 } from '@/types/keyword-analysis';
 
 export class APIClient {
   private baseURL: string;
   private abortController: AbortController | null = null;
+  private rootAbortController: AbortController | null = null;
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') {
+  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001') {
     this.baseURL = baseURL;
   }
 
@@ -67,6 +70,45 @@ export class APIClient {
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
+    }
+    if (this.rootAbortController) {
+      this.rootAbortController.abort();
+      this.rootAbortController = null;
+    }
+  }
+
+  async analyzeKeywordRoots(request: {
+    mode?: 'full' | 'simple';
+    keywords: RootAnalysisMember[];
+  }): Promise<RootAnalysisResponse> {
+    this.rootAbortController = new AbortController();
+
+    try {
+      const response = await fetch(`${this.baseURL}/root-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mode: 'full', ...request }),
+        signal: this.rootAbortController.signal,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || error.message || `Root analysis failed with status ${response.status}`);
+      }
+
+      return (await response.json()) as RootAnalysisResponse;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Root analysis was cancelled');
+        }
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during root analysis');
+    } finally {
+      this.rootAbortController = null;
     }
   }
 

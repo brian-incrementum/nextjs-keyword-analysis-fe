@@ -170,17 +170,20 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
           const csvDataObj: CSVData = {
             headers,
             rows: previewRows,
+            allRows: parsedData,
           };
 
           const detectedColumn = detectKeywordColumn(headers);
           if (detectedColumn) {
             csvDataObj.detectedKeywordColumn = detectedColumn;
+            csvDataObj.selectedKeywordColumn = detectedColumn;
             setSelectedColumn(detectedColumn);
           }
 
           const detectedVolume = detectSearchVolumeColumn(headers, previewRows);
           if (detectedVolume) {
             csvDataObj.detectedSearchVolumeColumn = detectedVolume;
+            csvDataObj.selectedSearchVolumeColumn = detectedVolume;
             setSelectedVolumeColumn(detectedVolume);
           }
 
@@ -232,7 +235,7 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
     handleFileSelect(acceptedFiles);
   }, [handleFileSelect]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps: _getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/csv': ['.csv'],
@@ -253,88 +256,105 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
 
   const handleColumnSelect = (column: string) => {
     setSelectedColumn(column);
+    setCSVData(prev => prev ? { ...prev, selectedKeywordColumn: column } : prev);
   };
 
   const handleVolumeColumnSelect = (column: string) => {
     setSelectedVolumeColumn(column === '__none' ? '' : column);
+    setCSVData(prev => prev ? { ...prev, selectedSearchVolumeColumn: column === '__none' ? undefined : column } : prev);
   };
 
   const handleConfirm = () => {
-    if (!csvData || !selectedColumn || !file) {
+    if (!csvData || !selectedColumn) {
       setError('Please select a column containing keywords.');
       return;
     }
 
+    const finalizeUpload = (allRows: Record<string, string>[]) => {
+      // Find the actual header to use (handle empty headers with fallback names)
+      const actualColumnKey = csvData.headers.find((h, idx) => {
+        const headerValue = h.trim() || `Column ${idx + 1}`;
+        return headerValue === selectedColumn;
+      }) || selectedColumn;
+
+      const keywords = allRows
+        .map(row => (row[actualColumnKey] ?? '').toString().trim())
+        .filter(keyword => keyword !== '');
+
+      if (keywords.length === 0) {
+        setError('Selected column contains no valid keywords.');
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log(`Extracted ${keywords.length} keywords from column "${selectedColumn}"`);
+
+      // Build optional metadata mapping (e.g., search volume)
+      let keywordMeta: Record<string, { searchVolume?: number }> | undefined;
+      if (selectedVolumeColumn && selectedVolumeColumn !== '__none') {
+        keywordMeta = {};
+
+        const actualVolumeKey = csvData.headers.find((h, idx) => {
+          const headerValue = h.trim() || `Column ${idx + 1}`;
+          return headerValue === selectedVolumeColumn;
+        }) || selectedVolumeColumn;
+
+        for (const row of allRows) {
+          const kw = (row[actualColumnKey] ?? '').toString().trim();
+          if (!kw) continue;
+          const raw = row[actualVolumeKey];
+          if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+            const num = Number(String(raw).replace(/[\s,]/g, ''));
+            if (!Number.isNaN(num)) {
+              const key = kw.toLowerCase();
+              if (!keywordMeta[key]) keywordMeta[key] = {};
+              if (keywordMeta[key].searchVolume === undefined) {
+                keywordMeta[key].searchVolume = num;
+              }
+            }
+          }
+        }
+      }
+
+      onUpload(keywords, {
+        headers: csvData.headers,
+        rows: csvData.rows,
+        allRows,
+        detectedKeywordColumn: csvData.detectedKeywordColumn,
+        detectedSearchVolumeColumn: csvData.detectedSearchVolumeColumn,
+        selectedKeywordColumn: selectedColumn,
+        selectedSearchVolumeColumn: selectedVolumeColumn || undefined,
+        keywordMeta,
+      });
+
+      setIsProcessing(false);
+    };
+
     setIsProcessing(true);
-    
-    // Read and parse the full file again to get all keywords
+
+    if (csvData.allRows && csvData.allRows.length > 0) {
+      finalizeUpload(csvData.allRows);
+      return;
+    }
+
+    if (!file) {
+      setIsProcessing(false);
+      setError('Unable to read CSV file. Please re-upload.');
+      return;
+    }
+
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      
+
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
         complete: (result) => {
-          setIsProcessing(false);
-          
           const allRows = result.data as Record<string, string>[];
-          
-          // Find the actual header to use (handle empty headers with fallback names)
-          const actualColumnKey = csvData.headers.find((h, idx) => {
-            const headerValue = h.trim() || `Column ${idx + 1}`;
-            return headerValue === selectedColumn;
-          }) || selectedColumn;
-          
-          const keywords = allRows
-            .map(row => (row[actualColumnKey] ?? '').toString().trim())
-            .filter(keyword => keyword !== '');
 
-          if (keywords.length === 0) {
-            setError('Selected column contains no valid keywords.');
-            return;
-          }
-
-          console.log(`Extracted ${keywords.length} keywords from column "${selectedColumn}"`);
-          
-          // Build optional metadata mapping (e.g., search volume)
-          let keywordMeta: Record<string, { searchVolume?: number }> | undefined;
-          if (selectedVolumeColumn && selectedVolumeColumn !== '__none') {
-            keywordMeta = {};
-            
-            // Find the actual volume column key
-            const actualVolumeKey = csvData.headers.find((h, idx) => {
-              const headerValue = h.trim() || `Column ${idx + 1}`;
-              return headerValue === selectedVolumeColumn;
-            }) || selectedVolumeColumn;
-            
-            for (const row of allRows) {
-              const kw = (row[actualColumnKey] ?? '').toString().trim();
-              if (!kw) continue;
-              const raw = row[actualVolumeKey];
-              if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
-                const num = Number(String(raw).replace(/[\s,]/g, ''));
-                if (!Number.isNaN(num)) {
-                  const key = kw.toLowerCase();
-                  if (!keywordMeta[key]) keywordMeta[key] = {};
-                  if (keywordMeta[key].searchVolume === undefined) {
-                    keywordMeta[key].searchVolume = num;
-                  }
-                }
-              }
-            }
-          }
-
-          // Pass keywords plus optional metadata
-          onUpload(keywords, {
-            headers: csvData.headers,
-            rows: csvData.rows, // Keep preview data for display
-            detectedKeywordColumn: csvData.detectedKeywordColumn,
-            detectedSearchVolumeColumn: csvData.detectedSearchVolumeColumn,
-            selectedSearchVolumeColumn: selectedVolumeColumn || undefined,
-            keywordMeta,
-          });
+          finalizeUpload(allRows);
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         error: (error: any) => {

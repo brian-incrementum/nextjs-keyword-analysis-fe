@@ -29,7 +29,7 @@ import {
   TrendingUp,
   Package,
   Zap,
-  Filter
+  // Filter
 } from 'lucide-react';
 import type { KeywordResult } from '@/types/keyword-analysis';
 

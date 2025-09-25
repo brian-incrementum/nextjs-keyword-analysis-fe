@@ -21,21 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Download, 
+import {
+  // Download,
   ArrowUpDown,
   Search,
-  FileDown,
+  // FileDown,
   TrendingUp,
   Package,
   Zap,
-  Filter,
+  // Filter,
   Layers,
   List
 } from 'lucide-react';
 import { GroupedKeywordTable } from '@/components/keyword-analysis/GroupedKeywordTable';
 import { ExportDropdown } from '@/components/keyword-analysis/export-dropdown';
-import { groupKeywords, flattenGroupedKeywords } from '@/lib/keyword-grouping';
+import { groupKeywords } from '@/lib/keyword-grouping';
 import type { KeywordResult } from '@/types/keyword-analysis';
 
 interface ResultsTableProps {

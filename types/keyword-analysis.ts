@@ -88,11 +88,36 @@ export interface KeywordResult {
 export interface CSVData {
   headers: string[];
   rows: Record<string, string>[];
+  allRows?: Record<string, string>[];
   detectedKeywordColumn?: string;
   detectedSearchVolumeColumn?: string;
+  selectedKeywordColumn?: string;
   selectedSearchVolumeColumn?: string;
   // Mapping from keyword to associated metadata extracted from CSV
   keywordMeta?: Record<string, { searchVolume?: number }>;
+}
+
+export interface RootAnalysisMember {
+  keyword: string;
+  search_volume?: number | null;
+}
+
+export interface RootAnalysisResult {
+  normalized_term: string;
+  frequency: number;
+  search_volume?: number;
+  relative_volume?: number;
+  members: RootAnalysisMember[];
+}
+
+export interface RootAnalysisResponse {
+  mode: 'full' | 'simple';
+  total_keywords: number;
+  results: RootAnalysisResult[];
+  auto_config_updates?: {
+    new_stopwords?: string[];
+    new_irregular_singulars?: Record<string, string>;
+  };
 }
 
 export interface AnalysisState {

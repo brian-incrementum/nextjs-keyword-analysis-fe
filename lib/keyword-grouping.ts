@@ -23,7 +23,7 @@ export function groupKeywords(keywords: KeywordResult[]): GroupedKeywordResult[]
     
     // Check if this keyword belongs to an existing group
     let foundGroup = false;
-    for (const [groupLemma, group] of groups.entries()) {
+    for (const [_groupLemma, group] of groups.entries()) {
       if (areKeywordVariations(keyword.keyword, group.parent.keyword)) {
         // Add as a variation to existing group
         group.variations.push(keyword);

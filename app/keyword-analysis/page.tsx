@@ -6,8 +6,10 @@ import { ProductInputComponent } from '@/components/keyword-analysis/product-inp
 import { CSVUploadComponent } from '@/components/keyword-analysis/csv-upload';
 import { AnalysisProcessComponent } from '@/components/keyword-analysis/analysis-process';
 import { VirtualizedResultsTable } from '@/components/keyword-analysis/VirtualizedResultsTable';
+import { RootAnalysisTab } from '@/components/keyword-analysis/root-analysis-tab';
 import { apiClient, APIClient } from '@/lib/utils/api-client';
 import { exportToCSV, exportToExcel } from '@/lib/utils/csv-export';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useKeywordProcessor } from '@/lib/hooks/useKeywordProcessor';
 import type { GroupedKeywordResult } from '@/types/keyword-analysis';
 import type { 
@@ -16,7 +18,10 @@ import type {
   AnalysisState, 
   KeywordResult,
   KeywordAnalysisResponse,
-  AnalysisSummary
+  AnalysisSummary,
+  RootAnalysisResponse,
+  RootAnalysisResult,
+  RootAnalysisMember
 } from '@/types/keyword-analysis';
 
 type Step = 'product' | 'keywords' | 'analysis' | 'results';
@@ -34,7 +39,12 @@ export default function KeywordAnalysisPage() {
   const [groups, setGroups] = useState<GroupedKeywordResult[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const { processKeywords, cancelProcessing, state: processorState } = useKeywordProcessor();
+  const [rootAnalysis, setRootAnalysis] = useState<RootAnalysisResponse | null>(null);
+  const [isRootLoading, setIsRootLoading] = useState(false);
+  const [rootError, setRootError] = useState<string | null>(null);
+  const [resultsTab, setResultsTab] = useState<'scores' | 'roots'>('scores');
+  const [rootMemberPayload, setRootMemberPayload] = useState<RootAnalysisMember[]>([]);
+  const { processKeywords, cancelProcessing, state: _processorState } = useKeywordProcessor();
 
   const handleProductSubmit = useCallback((data: ProductInput) => {
     setProductInput(data);
@@ -44,7 +54,8 @@ export default function KeywordAnalysisPage() {
 
   const startAnalysis = useCallback(async (
     keywordList: string[],
-    keywordMeta?: Record<string, { searchVolume?: number }>
+    keywordMeta?: Record<string, { searchVolume?: number }>,
+    csvDataParam?: CSVData | null
   ) => {
     if (!productInput) {
       toast.error('Product information is missing');
@@ -57,6 +68,101 @@ export default function KeywordAnalysisPage() {
       progress: 0,
       message: 'Preparing data...',
     });
+
+    // Kick off root analysis in parallel so results tab can hydrate later
+    const triggerRootAnalysis = () => {
+      if (!csvDataParam) {
+        setRootAnalysis(null);
+        setRootError('CSV data unavailable for root analysis.');
+        return;
+      }
+
+      const normalizedKeywordHeader = (() => {
+        if (!csvDataParam) return '';
+        const target = csvDataParam.selectedKeywordColumn || csvDataParam.detectedKeywordColumn;
+        if (!target) return csvDataParam.headers[0];
+        return csvDataParam.headers.find((h, idx) => {
+          const headerValue = h.trim() || `Column ${idx + 1}`;
+          return headerValue === target;
+        }) || target;
+      })();
+
+      const normalizedVolumeHeader = (() => {
+        if (!csvDataParam?.selectedSearchVolumeColumn) return undefined;
+        const target = csvDataParam.selectedSearchVolumeColumn;
+        return csvDataParam.headers.find((h, idx) => {
+          const headerValue = h.trim() || `Column ${idx + 1}`;
+          return headerValue === target;
+        }) || target;
+      })();
+
+      const buildMembersFromRows = (rows: Record<string, string>[]): RootAnalysisMember[] => rows
+        .map(row => {
+          const keyword = (row?.[normalizedKeywordHeader] ?? '').toString().trim();
+          if (!keyword) return null;
+          let searchVolume: number | undefined;
+          if (normalizedVolumeHeader) {
+            const raw = row?.[normalizedVolumeHeader];
+            if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+              const parsed = Number(String(raw).replace(/[\s,]/g, ''));
+              if (!Number.isNaN(parsed)) {
+                searchVolume = parsed;
+              }
+            }
+          } else if (keywordMeta) {
+            const metaVal = keywordMeta[keyword.toLowerCase()];
+            if (metaVal?.searchVolume !== undefined) {
+              searchVolume = metaVal.searchVolume;
+            }
+          }
+          return {
+            keyword,
+            search_volume: searchVolume ?? null,
+          } as RootAnalysisMember;
+        })
+        .filter((member): member is RootAnalysisMember => member !== null);
+
+      let rootMembers: RootAnalysisMember[] = [];
+      if (csvDataParam.allRows && csvDataParam.allRows.length > 0) {
+        rootMembers = buildMembersFromRows(csvDataParam.allRows);
+      } else if (rootMemberPayload.length > 0) {
+        rootMembers = rootMemberPayload;
+      } else {
+        rootMembers = keywordList.map(keyword => ({
+          keyword,
+          search_volume: keywordMeta?.[keyword.toLowerCase()]?.searchVolume,
+        }));
+      }
+
+      setRootMemberPayload(rootMembers);
+
+      if (rootMembers.length === 0) {
+        setRootAnalysis(null);
+        return;
+      }
+
+      setRootAnalysis(null);
+      setRootError(null);
+      setIsRootLoading(true);
+
+      void (async () => {
+        try {
+          const response = await apiClient.analyzeKeywordRoots({
+            keywords: rootMembers,
+          });
+          setRootAnalysis(response);
+        } catch (error) {
+          console.error('Root analysis error:', error);
+          setRootError(error instanceof Error ? error.message : 'Failed to load root analysis');
+          toast.error('Root analysis failed. View the root tab for details.');
+        } finally {
+          setIsRootLoading(false);
+          // Keep allRows intact for potential future use
+        }
+      })();
+    };
+
+    triggerRootAnalysis();
 
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -82,9 +188,9 @@ export default function KeywordAnalysisPage() {
         return 'Processing is taking longer than usual. Please wait...';
       };
 
-      let intervalCount = 0;
+      let _intervalCount = 0;
       const progressInterval = setInterval(() => {
-        intervalCount++;
+        _intervalCount++;
         const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
         
         setAnalysisState(prev => {
@@ -153,7 +259,7 @@ export default function KeywordAnalysisPage() {
         console.log(`[DEBUG] Sending ${displayResults.length} results to worker for processing`);
         const { results: processedResults, groups: processedGroups } = await processKeywords(
           displayResults,
-          keywordMeta || csvData?.keywordMeta
+          keywordMeta || csvDataParam?.keywordMeta
         );
         console.log(`[DEBUG] Worker returned ${processedResults.length} processed results`);
         console.log(`[DEBUG] Worker created ${processedGroups.length} groups`);
@@ -188,8 +294,13 @@ export default function KeywordAnalysisPage() {
       }, 1000);
 
     } catch (error) {
-      console.error('Analysis error:', error);
-      
+      console.error('Analysis error - Full details:', error);
+      console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error && 'cause' in error) {
+        console.error('Error cause:', error.cause);
+      }
+
       // Use mock data for demo if API fails
       let mockResults: KeywordResult[] = keywordList.map((keyword) => ({
         keyword,
@@ -200,7 +311,7 @@ export default function KeywordAnalysisPage() {
         analysis: `Mock analysis for "${keyword}": This is demo data as the API is not connected.`,
       }));
 
-      const meta2 = keywordMeta || csvData?.keywordMeta;
+      const meta2 = keywordMeta || csvDataParam?.keywordMeta;
       if (meta2) {
         mockResults = mockResults.map(r => ({
           ...r,
@@ -249,7 +360,7 @@ export default function KeywordAnalysisPage() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [productInput]);
+  }, [productInput, processKeywords, rootMemberPayload]);
 
   const handleCSVUpload = useCallback((uploadedKeywords: string[], uploadedCSVData: CSVData) => {
     if (!productInput) {
@@ -260,11 +371,16 @@ export default function KeywordAnalysisPage() {
     
     setKeywords(uploadedKeywords);
     setCSVData(uploadedCSVData);
+    setRootAnalysis(null);
+    setRootError(null);
+    setIsRootLoading(false);
+    setResultsTab('scores');
+    setRootMemberPayload([]);
     toast.success(`${uploadedKeywords.length} keywords loaded`);
     setCurrentStep('analysis');
-    
+
     setTimeout(() => {
-      startAnalysis(uploadedKeywords, uploadedCSVData.keywordMeta);
+      startAnalysis(uploadedKeywords, uploadedCSVData.keywordMeta, uploadedCSVData);
     }, 500);
   }, [productInput, startAnalysis]);
 
@@ -276,14 +392,19 @@ export default function KeywordAnalysisPage() {
       status: 'idle',
       progress: 0,
     });
+    setIsRootLoading(false);
+    setRootAnalysis(null);
+    setRootError('Root analysis cancelled');
+    setRootMemberPayload([]);
+    setCSVData(prev => (prev ? { ...prev, allRows: undefined } : prev));
     toast.info('Analysis cancelled');
   }, [cancelProcessing]);
 
   const handleRetryAnalysis = useCallback(() => {
     if (keywords.length > 0) {
-      startAnalysis(keywords);
+      startAnalysis(keywords, csvData?.keywordMeta, csvData);
     }
-  }, [keywords, startAnalysis]);
+  }, [keywords, startAnalysis, csvData]);
 
   const handleExport = useCallback((format: 'csv' | 'xlsx', customData?: KeywordResult[]) => {
     // Use custom data if provided (for grouped exports), otherwise use all results
@@ -316,6 +437,37 @@ export default function KeywordAnalysisPage() {
     }
   }, [results]);
 
+  const handleRootExport = useCallback((root: RootAnalysisResult) => {
+    if (!root.members || root.members.length === 0) {
+      toast.error('No keywords to export for this root');
+      return;
+    }
+
+    // Create a set of member keywords (case-insensitive) for faster lookup
+    const memberKeywords = new Set(
+      root.members.map(member => member.keyword.toLowerCase())
+    );
+
+    // Filter results to only include keywords that are members of this root
+    const rootResults = results.filter(result =>
+      memberKeywords.has(result.keyword.toLowerCase())
+    );
+
+    if (rootResults.length === 0) {
+      toast.error('No analyzed results found for this root');
+      return;
+    }
+
+    const sanitizedName = root.normalized_term
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'root-keywords';
+
+    // Use the standard export function with filtered results
+    exportToCSV(rootResults, `${sanitizedName}-keywords.csv`);
+    toast.success(`Exported ${rootResults.length} keywords for "${root.normalized_term}"`);
+  }, [results]);
+
   const handleStartNew = useCallback(() => {
     setCurrentStep('product');
     setProductInput(null);
@@ -326,6 +478,11 @@ export default function KeywordAnalysisPage() {
     setGroups([]);
     setSummary(null);
     setIsAnalyzing(false);
+    setRootAnalysis(null);
+    setIsRootLoading(false);
+    setRootError(null);
+    setResultsTab('scores');
+    setRootMemberPayload([]);
   }, []);
 
   return (
@@ -402,16 +559,35 @@ export default function KeywordAnalysisPage() {
         )}
 
         {currentStep === 'results' && (
-          <VirtualizedResultsTable
-            results={results}
-            groups={groups}
-            onExport={handleExport}
-            summary={summary ? {
-              average_score: summary.average_score,
-              total_keywords: summary.total_keywords,
-              by_type: summary.by_type,
-            } : undefined}
-          />
+          <Tabs
+            value={resultsTab}
+            onValueChange={value => setResultsTab(value as 'scores' | 'roots')}
+          >
+            <TabsList>
+              <TabsTrigger value="scores">Keyword Scores</TabsTrigger>
+              <TabsTrigger value="roots">Root Keywords</TabsTrigger>
+            </TabsList>
+            <TabsContent value="scores">
+              <VirtualizedResultsTable
+                results={results}
+                groups={groups}
+                onExport={handleExport}
+                summary={summary ? {
+                  average_score: summary.average_score,
+                  total_keywords: summary.total_keywords,
+                  by_type: summary.by_type,
+                } : undefined}
+              />
+            </TabsContent>
+            <TabsContent value="roots">
+              <RootAnalysisTab
+                data={rootAnalysis}
+                isLoading={isRootLoading}
+                error={rootError}
+                onExportRoot={handleRootExport}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import { CSVUploadComponent } from '@/components/keyword-analysis/csv-upload';
 import { AnalysisProcessComponent } from '@/components/keyword-analysis/analysis-process';
 import { VirtualizedResultsTable } from '@/components/keyword-analysis/VirtualizedResultsTable';
 import { RootAnalysisTab } from '@/components/keyword-analysis/root-analysis-tab';
+import { NegativePhrasesTab } from '@/components/keyword-analysis/negative-phrases-tab';
 import { apiClient, APIClient } from '@/lib/utils/api-client';
 import { exportToCSV, exportToExcel } from '@/lib/utils/csv-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,8 +43,11 @@ export default function KeywordAnalysisPage() {
   const [rootAnalysis, setRootAnalysis] = useState<RootAnalysisResponse | null>(null);
   const [isRootLoading, setIsRootLoading] = useState(false);
   const [rootError, setRootError] = useState<string | null>(null);
-  const [resultsTab, setResultsTab] = useState<'scores' | 'roots'>('scores');
+  const [resultsTab, setResultsTab] = useState<'scores' | 'roots' | 'negative'>('scores');
   const [rootMemberPayload, setRootMemberPayload] = useState<RootAnalysisMember[]>([]);
+  const [negativePhrases, setNegativePhrases] = useState<string[] | null>(null);
+  const [isNegativePhrasesLoading, setIsNegativePhrasesLoading] = useState(false);
+  const [negativePhrasesError, setNegativePhrasesError] = useState<string | null>(null);
   const { processKeywords, cancelProcessing, state: _processorState } = useKeywordProcessor();
 
   const handleProductSubmit = useCallback((data: ProductInput) => {
@@ -163,6 +167,37 @@ export default function KeywordAnalysisPage() {
     };
 
     triggerRootAnalysis();
+
+    // Trigger negative phrases generation in parallel
+    const triggerNegativePhrases = () => {
+      if (productInput?.mode !== 'asin') {
+        setNegativePhrases(null);
+        setNegativePhrasesError('Negative phrases require an ASIN');
+        return;
+      }
+
+      setNegativePhrases(null);
+      setNegativePhrasesError(null);
+      setIsNegativePhrasesLoading(true);
+
+      void (async () => {
+        try {
+          const phrases = await apiClient.getNegativePhrases({
+            asin: productInput.asin,
+            country: productInput.country,
+          });
+          setNegativePhrases(phrases);
+        } catch (error) {
+          console.error('Negative phrases error:', error);
+          setNegativePhrasesError(error instanceof Error ? error.message : 'Failed to generate negative phrases');
+          toast.error('Negative phrases generation failed. View the Negative Phrases tab for details.');
+        } finally {
+          setIsNegativePhrasesLoading(false);
+        }
+      })();
+    };
+
+    triggerNegativePhrases();
 
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -376,6 +411,9 @@ export default function KeywordAnalysisPage() {
     setIsRootLoading(false);
     setResultsTab('scores');
     setRootMemberPayload([]);
+    setNegativePhrases(null);
+    setIsNegativePhrasesLoading(false);
+    setNegativePhrasesError(null);
     toast.success(`${uploadedKeywords.length} keywords loaded`);
     setCurrentStep('analysis');
 
@@ -396,6 +434,9 @@ export default function KeywordAnalysisPage() {
     setRootAnalysis(null);
     setRootError('Root analysis cancelled');
     setRootMemberPayload([]);
+    setNegativePhrases(null);
+    setIsNegativePhrasesLoading(false);
+    setNegativePhrasesError('Negative phrases generation cancelled');
     setCSVData(prev => (prev ? { ...prev, allRows: undefined } : prev));
     toast.info('Analysis cancelled');
   }, [cancelProcessing]);
@@ -483,6 +524,9 @@ export default function KeywordAnalysisPage() {
     setRootError(null);
     setResultsTab('scores');
     setRootMemberPayload([]);
+    setNegativePhrases(null);
+    setIsNegativePhrasesLoading(false);
+    setNegativePhrasesError(null);
   }, []);
 
   return (
@@ -561,11 +605,12 @@ export default function KeywordAnalysisPage() {
         {currentStep === 'results' && (
           <Tabs
             value={resultsTab}
-            onValueChange={value => setResultsTab(value as 'scores' | 'roots')}
+            onValueChange={value => setResultsTab(value as 'scores' | 'roots' | 'negative')}
           >
             <TabsList>
               <TabsTrigger value="scores">Keyword Scores</TabsTrigger>
               <TabsTrigger value="roots">Root Keywords</TabsTrigger>
+              <TabsTrigger value="negative">Negative Phrases</TabsTrigger>
             </TabsList>
             <TabsContent value="scores">
               <VirtualizedResultsTable
@@ -585,6 +630,13 @@ export default function KeywordAnalysisPage() {
                 isLoading={isRootLoading}
                 error={rootError}
                 onExportRoot={handleRootExport}
+              />
+            </TabsContent>
+            <TabsContent value="negative">
+              <NegativePhrasesTab
+                phrases={negativePhrases}
+                isLoading={isNegativePhrasesLoading}
+                error={negativePhrasesError}
               />
             </TabsContent>
           </Tabs>

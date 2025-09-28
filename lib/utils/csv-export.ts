@@ -77,3 +77,25 @@ export function exportRootMembersToCSV(root: RootAnalysisResult, filename?: stri
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+export function exportNegativePhrasesToCSV(phrases: string[], filename: string = 'negative-phrases.csv'): void {
+  const rows = phrases.map(phrase => ({ 'Negative Phrases': phrase }));
+
+  const csv = Papa.unparse(rows, {
+    header: true,
+    columns: ['Negative Phrases'],
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

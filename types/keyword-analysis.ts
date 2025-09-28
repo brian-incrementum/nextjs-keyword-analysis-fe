@@ -140,3 +140,11 @@ export interface GroupedKeywordResult {
   lemma: string;
   totalVariations: number;
 }
+
+// Negative Phrase types
+export interface NegativePhraseRequest {
+  asin: string;
+  country?: CountryCode;
+}
+
+export type NegativePhraseResponse = string[];

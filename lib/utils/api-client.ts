@@ -1,16 +1,19 @@
-import type { 
-  KeywordAnalysisRequest, 
+import type {
+  KeywordAnalysisRequest,
   KeywordAnalysisResponse,
   KeywordResult,
   KeywordAnalysisResult,
   RootAnalysisResponse,
-  RootAnalysisMember
+  RootAnalysisMember,
+  NegativePhraseRequest,
+  NegativePhraseResponse
 } from '@/types/keyword-analysis';
 
 export class APIClient {
   private baseURL: string;
   private abortController: AbortController | null = null;
   private rootAbortController: AbortController | null = null;
+  private negativePhraseAbortController: AbortController | null = null;
 
   constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001') {
     this.baseURL = baseURL;
@@ -75,6 +78,10 @@ export class APIClient {
       this.rootAbortController.abort();
       this.rootAbortController = null;
     }
+    if (this.negativePhraseAbortController) {
+      this.negativePhraseAbortController.abort();
+      this.negativePhraseAbortController = null;
+    }
   }
 
   async analyzeKeywordRoots(request: {
@@ -109,6 +116,41 @@ export class APIClient {
       throw new Error('An unexpected error occurred during root analysis');
     } finally {
       this.rootAbortController = null;
+    }
+  }
+
+  async getNegativePhrases(request: NegativePhraseRequest): Promise<NegativePhraseResponse> {
+    this.negativePhraseAbortController = new AbortController();
+
+    try {
+      const response = await fetch(`${this.baseURL}/negative-phrase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          asin: request.asin,
+          country: request.country || 'US',
+        }),
+        signal: this.negativePhraseAbortController.signal,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || error.message || `Negative phrase generation failed with status ${response.status}`);
+      }
+
+      return (await response.json()) as NegativePhraseResponse;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Negative phrase generation was cancelled');
+        }
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during negative phrase generation');
+    } finally {
+      this.negativePhraseAbortController = null;
     }
   }
 

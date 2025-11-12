@@ -8,21 +8,23 @@ import { AnalysisProcessComponent } from '@/components/keyword-analysis/analysis
 import { VirtualizedResultsTable } from '@/components/keyword-analysis/VirtualizedResultsTable';
 import { RootAnalysisTab } from '@/components/keyword-analysis/root-analysis-tab';
 import { NegativePhrasesTab } from '@/components/keyword-analysis/negative-phrases-tab';
+import { SegmentsTab } from '@/components/keyword-analysis/segments-tab';
 import { apiClient, APIClient } from '@/lib/utils/api-client';
 import { exportToCSV, exportToExcel } from '@/lib/utils/csv-export';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useKeywordProcessor } from '@/lib/hooks/useKeywordProcessor';
 import type { GroupedKeywordResult } from '@/types/keyword-analysis';
-import type { 
-  ProductInput, 
-  CSVData, 
-  AnalysisState, 
+import type {
+  ProductInput,
+  CSVData,
+  AnalysisState,
   KeywordResult,
   KeywordAnalysisResponse,
   AnalysisSummary,
   RootAnalysisResponse,
   RootAnalysisResult,
-  RootAnalysisMember
+  RootAnalysisMember,
+  Segment
 } from '@/types/keyword-analysis';
 
 type Step = 'product' | 'keywords' | 'analysis' | 'results';
@@ -43,11 +45,12 @@ export default function KeywordAnalysisPage() {
   const [rootAnalysis, setRootAnalysis] = useState<RootAnalysisResponse | null>(null);
   const [isRootLoading, setIsRootLoading] = useState(false);
   const [rootError, setRootError] = useState<string | null>(null);
-  const [resultsTab, setResultsTab] = useState<'scores' | 'roots' | 'negative'>('scores');
+  const [resultsTab, setResultsTab] = useState<'scores' | 'roots' | 'negative' | 'segments'>('scores');
   const [rootMemberPayload, setRootMemberPayload] = useState<RootAnalysisMember[]>([]);
   const [negativePhrases, setNegativePhrases] = useState<string[] | null>(null);
   const [isNegativePhrasesLoading, setIsNegativePhrasesLoading] = useState(false);
   const [negativePhrasesError, setNegativePhrasesError] = useState<string | null>(null);
+  const [segments, setSegments] = useState<Segment[]>([]);
   const { processKeywords, cancelProcessing, state: _processorState } = useKeywordProcessor();
 
   const handleProductSubmit = useCallback((data: ProductInput) => {
@@ -605,12 +608,13 @@ export default function KeywordAnalysisPage() {
         {currentStep === 'results' && (
           <Tabs
             value={resultsTab}
-            onValueChange={value => setResultsTab(value as 'scores' | 'roots' | 'negative')}
+            onValueChange={value => setResultsTab(value as 'scores' | 'roots' | 'negative' | 'segments')}
           >
             <TabsList>
               <TabsTrigger value="scores">Keyword Scores</TabsTrigger>
               <TabsTrigger value="roots">Root Keywords</TabsTrigger>
               <TabsTrigger value="negative">Negative Phrases</TabsTrigger>
+              <TabsTrigger value="segments">Segments</TabsTrigger>
             </TabsList>
             <TabsContent value="scores">
               <VirtualizedResultsTable
@@ -637,6 +641,13 @@ export default function KeywordAnalysisPage() {
                 phrases={negativePhrases}
                 isLoading={isNegativePhrasesLoading}
                 error={negativePhrasesError}
+              />
+            </TabsContent>
+            <TabsContent value="segments">
+              <SegmentsTab
+                groups={groups}
+                segments={segments}
+                onSegmentsChange={setSegments}
               />
             </TabsContent>
           </Tabs>

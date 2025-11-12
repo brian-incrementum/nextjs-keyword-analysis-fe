@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import type { KeywordResult, RootAnalysisResult } from '@/types/keyword-analysis';
+import type { KeywordResult, RootAnalysisResult, Segment, GroupedKeywordResult } from '@/types/keyword-analysis';
 
 export function exportToCSV(data: KeywordResult[], filename: string = 'keyword-analysis-results.csv'): void {
   const csv = Papa.unparse(data, {
@@ -84,6 +84,50 @@ export function exportNegativePhrasesToCSV(phrases: string[], filename: string =
   const csv = Papa.unparse(rows, {
     header: true,
     columns: ['Negative Phrases'],
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportSegmentsToCSV(
+  groups: GroupedKeywordResult[],
+  segments: Segment[],
+  filename: string = 'keyword-segments.csv'
+): void {
+  // Create a map of keyword to segment name
+  const keywordToSegment = new Map<string, string>();
+  segments.forEach((segment) => {
+    segment.keywords.forEach((keyword) => {
+      keywordToSegment.set(keyword, segment.name);
+    });
+  });
+
+  // Create rows with only segmented keywords (filter out unassigned ones)
+  const rows = groups
+    .filter((group) => keywordToSegment.has(group.parent.keyword))
+    .map((group) => ({
+      keyword: group.parent.keyword,
+      searchVolume: group.parent.searchVolume || '',
+      type: group.parent.type,
+      score: group.parent.score,
+      reasoning: group.parent.reasoning,
+      segment: keywordToSegment.get(group.parent.keyword) || '',
+    }));
+
+  const csv = Papa.unparse(rows, {
+    header: true,
+    columns: ['keyword', 'searchVolume', 'type', 'score', 'reasoning', 'segment'],
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

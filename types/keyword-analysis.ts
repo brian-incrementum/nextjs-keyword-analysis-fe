@@ -141,6 +141,14 @@ export interface GroupedKeywordResult {
   totalVariations: number;
 }
 
+// Segment types for keyword organization
+export interface Segment {
+  id: string;
+  name: string;
+  keywords: string[]; // parent keyword strings
+  createdAt: Date;
+}
+
 // Negative Phrase types
 export interface NegativePhraseRequest {
   asin: string;

@@ -77,7 +77,7 @@ export function ScoreFilterMultiSelect({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-[180px] justify-between">
+        <Button variant="outline" className="w-full h-9 justify-between">
           <span className="truncate">{getButtonLabel()}</span>
           <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0" />
         </Button>

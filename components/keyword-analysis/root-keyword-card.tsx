@@ -29,78 +29,130 @@ export const RootKeywordCard = memo(function RootKeywordCard({
   onExportRoot
 }: RootKeywordCardProps) {
   const [displayedMembers, setDisplayedMembers] = useState(INITIAL_MEMBERS_DISPLAY);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+  const [isCardCollapsed, setIsCardCollapsed] = useState(true);
 
-  const visibleMembers = isExpanded ? root.members.slice(0, displayedMembers) : root.members.slice(0, INITIAL_MEMBERS_DISPLAY);
+  const visibleMembers = isMembersExpanded ? root.members.slice(0, displayedMembers) : root.members.slice(0, INITIAL_MEMBERS_DISPLAY);
   const hasMoreMembers = root.members.length > displayedMembers;
-  const canExpand = root.members.length > INITIAL_MEMBERS_DISPLAY;
+  const canExpandMembers = root.members.length > INITIAL_MEMBERS_DISPLAY;
 
   const handleLoadMore = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setDisplayedMembers(prev => Math.min(prev + LOAD_MORE_INCREMENT, root.members.length));
   }, [root.members.length]);
 
-  const toggleExpanded = useCallback(() => {
-    setIsExpanded(prev => !prev);
-    if (!isExpanded && displayedMembers === INITIAL_MEMBERS_DISPLAY) {
+  const toggleMembersExpanded = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMembersExpanded(prev => !prev);
+    if (!isMembersExpanded && displayedMembers === INITIAL_MEMBERS_DISPLAY) {
       setDisplayedMembers(Math.min(INITIAL_MEMBERS_DISPLAY + LOAD_MORE_INCREMENT, root.members.length));
     }
-  }, [isExpanded, displayedMembers, root.members.length]);
+  }, [isMembersExpanded, displayedMembers, root.members.length]);
+
+  const toggleCardCollapsed = useCallback(() => {
+    setIsCardCollapsed(prev => !prev);
+  }, []);
 
   const handleExport = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onExportRoot(root);
   }, [root, onExportRoot]);
 
-  return (
-    <div className="rounded-lg border p-4 shadow-sm transition-colors hover:border-primary/40">
-      <div className="flex flex-col gap-4 md:flex-row">
-        <div className="md:w-1/2 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold">{root.normalized_term}</h3>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleExport}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
+  if (isCardCollapsed) {
+    // Collapsed view: compact display with metrics
+    return (
+      <div
+        className="rounded-lg border p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md cursor-pointer"
+        onClick={toggleCardCollapsed}
+      >
+        <div className="flex items-center gap-4">
+          <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold mb-2 truncate">{root.normalized_term}</h3>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                <span className="font-medium text-foreground">{root.members.length.toLocaleString()}</span> members
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatNumber(root.search_volume)}</span> volume
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatNumber(root.frequency)}</span> frequency
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatPercentage(root.relative_volume)}</span> relative
+              </span>
+            </div>
           </div>
-          <dl className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            <div>
-              <dt className="font-medium text-foreground">Frequency</dt>
-              <dd>{formatNumber(root.frequency)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium text-foreground">Search Volume</dt>
-              <dd>{formatNumber(root.search_volume)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium text-foreground">Relative Volume</dt>
-              <dd>{formatPercentage(root.relative_volume)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium text-foreground">Members</dt>
-              <dd>{root.members.length.toLocaleString()}</dd>
-            </div>
-          </dl>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleExport}
+            className="shrink-0"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
         </div>
-        <div className="md:w-1/2">
-          <div className="flex items-center justify-between mb-2">
+      </div>
+    );
+  }
+
+  // Expanded view: full details with member keywords
+  return (
+    <div
+      className="rounded-lg border shadow-sm transition-all"
+    >
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={toggleCardCollapsed}
+      >
+        <div className="flex items-center gap-4">
+          <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold mb-2">{root.normalized_term}</h3>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                <span className="font-medium text-foreground">{root.members.length.toLocaleString()}</span> members
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatNumber(root.search_volume)}</span> volume
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatNumber(root.frequency)}</span> frequency
+              </span>
+              <span>
+                <span className="font-medium text-foreground">{formatPercentage(root.relative_volume)}</span> relative
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleExport}
+            className="shrink-0"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 pt-0">
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-muted-foreground">
               Member Keywords
             </h4>
-            {canExpand && (
+            {canExpandMembers && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={toggleExpanded}
+                onClick={toggleMembersExpanded}
                 className="h-6 px-2 text-xs"
               >
-                {isExpanded ? (
+                {isMembersExpanded ? (
                   <>
                     <ChevronUp className="mr-1 h-3 w-3" />
                     Show less
@@ -132,7 +184,7 @@ export const RootKeywordCard = memo(function RootKeywordCard({
                 </span>
               )}
             </div>
-            {isExpanded && hasMoreMembers && (
+            {isMembersExpanded && hasMoreMembers && (
               <Button
                 type="button"
                 variant="outline"

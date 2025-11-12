@@ -26,7 +26,6 @@ export function SegmentsTab({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [segmentToEdit, setSegmentToEdit] = useState<Segment | null>(null);
-  const [segmentToAddTo, setSegmentToAddTo] = useState<string | null>(null);
 
   // Calculate available keywords (not in any segment)
   const assignedKeywords = useMemo(() => {

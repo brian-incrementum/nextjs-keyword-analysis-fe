@@ -121,13 +121,6 @@ export function AvailableKeywordsPanel({
     [selectedKeywords, onSelectionChange]
   );
 
-  const selectAll = useCallback(() => {
-    const allKeywords = new Set(
-      filteredKeywords.map((group) => group.parent.keyword)
-    );
-    onSelectionChange(allKeywords);
-  }, [filteredKeywords, onSelectionChange]);
-
   const clearSelection = useCallback(() => {
     onSelectionChange(new Set());
   }, [onSelectionChange]);

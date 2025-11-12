@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { GroupedKeywordResult, Segment } from "@/types/keyword-analysis";
 import { toast } from "sonner";
 import { exportSegmentsToCSV } from "@/lib/utils/csv-export";
+import { generateId } from "@/lib/utils/id-generator";
 
 interface SegmentsTabProps {
   groups: GroupedKeywordResult[];
@@ -53,7 +54,7 @@ export function SegmentsTab({
   const handleConfirmCreate = useCallback(
     (name: string) => {
       const newSegment: Segment = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name,
         keywords: Array.from(selectedKeywords),
         createdAt: new Date(),

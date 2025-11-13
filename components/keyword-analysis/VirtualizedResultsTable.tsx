@@ -169,7 +169,7 @@ export function VirtualizedResultsTable({
 
   // Apply filters to groups (used for both display and export)
   const filteredGroups = useMemo(() => {
-    let filtered = groups;
+    let filtered = [...groups];
     if (typeFilter !== 'all') {
       filtered = filtered.filter(g => g.parent.type === typeFilter);
     }

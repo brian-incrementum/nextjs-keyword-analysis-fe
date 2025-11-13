@@ -114,24 +114,26 @@ export function VirtualizedResultsTable({
       );
     }
     
-    // Apply include keywords filter - item must contain at least one include keyword
+    // Apply include keywords filter - item must contain all include keywords
     if (includeKeywords.length > 0) {
-      filtered = filtered.filter(item => 
-        includeKeywords.some(keyword => 
-          item.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-          item.reasoning?.toLowerCase().includes(keyword.toLowerCase())
-        )
-      );
+      filtered = filtered.filter(item => {
+        const keywordLower = item.keyword.toLowerCase();
+        return includeKeywords.every((keyword) => {
+          const searchLower = keyword.toLowerCase();
+          return keywordLower.includes(searchLower);
+        });
+      });
     }
-    
+
     // Apply exclude keywords filter - item must not contain any exclude keyword
     if (excludeKeywords.length > 0) {
-      filtered = filtered.filter(item =>
-        !excludeKeywords.some(keyword =>
-          item.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-          item.reasoning?.toLowerCase().includes(keyword.toLowerCase())
-        )
-      );
+      filtered = filtered.filter(item => {
+        const keywordLower = item.keyword.toLowerCase();
+        return !excludeKeywords.some((keyword) => {
+          const searchLower = keyword.toLowerCase();
+          return keywordLower.includes(searchLower);
+        });
+      });
     }
 
     // Apply search volume range filter
@@ -198,30 +200,24 @@ export function VirtualizedResultsTable({
     
     // Apply include keywords filter to groups
     if (includeKeywords.length > 0) {
-      filteredGroups = filteredGroups.filter(g => 
-        includeKeywords.some(keyword => 
-          g.parent.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-          g.parent.reasoning?.toLowerCase().includes(keyword.toLowerCase()) ||
-          g.variations.some(v => 
-            v.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-            v.reasoning?.toLowerCase().includes(keyword.toLowerCase())
-          )
-        )
-      );
+      filteredGroups = filteredGroups.filter(g => {
+        const keywordLower = g.parent.keyword.toLowerCase();
+        return includeKeywords.every((keyword) => {
+          const searchLower = keyword.toLowerCase();
+          return keywordLower.includes(searchLower);
+        });
+      });
     }
-    
+
     // Apply exclude keywords filter to groups
     if (excludeKeywords.length > 0) {
-      filteredGroups = filteredGroups.filter(g =>
-        !excludeKeywords.some(keyword =>
-          g.parent.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-          g.parent.reasoning?.toLowerCase().includes(keyword.toLowerCase()) ||
-          g.variations.some(v =>
-            v.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
-            v.reasoning?.toLowerCase().includes(keyword.toLowerCase())
-          )
-        )
-      );
+      filteredGroups = filteredGroups.filter(g => {
+        const keywordLower = g.parent.keyword.toLowerCase();
+        return !excludeKeywords.some((keyword) => {
+          const searchLower = keyword.toLowerCase();
+          return keywordLower.includes(searchLower);
+        });
+      });
     }
 
     // Apply search volume range filter to groups

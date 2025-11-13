@@ -357,70 +357,74 @@ export function VirtualizedResultsTable({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search keywords..."
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-8"
-              />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search keywords..."
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'grouped' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('grouped')}
+                  className="flex items-center gap-1"
+                >
+                  <Layers className="h-4 w-4" />
+                  Grouped
+                </Button>
+                <Button
+                  variant={viewMode === 'flat' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('flat')}
+                  className="flex items-center gap-1"
+                >
+                  <List className="h-4 w-4" />
+                  Flat
+                </Button>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === 'grouped' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grouped')}
-                className="flex items-center gap-1"
-              >
-                <Layers className="h-4 w-4" />
-                Grouped
-              </Button>
-              <Button
-                variant={viewMode === 'flat' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('flat')}
-                className="flex items-center gap-1"
-              >
-                <List className="h-4 w-4" />
-                Flat
-              </Button>
-              
-              <div className="w-px h-6 bg-gray-300 mx-1" />
-              
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="generic">Generic</SelectItem>
-                  <SelectItem value="our_brand">Our Brand</SelectItem>
-                  <SelectItem value="competitor_brand">Competitor</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <ScoreFilterMultiSelect
-                selectedScores={scoreFilter}
-                onScoreChange={setScoreFilter}
-              />
-            </div>
-            
-            <div className="flex gap-2">
-              <ExportDropdown 
-                onExport={(format, mode) => {
-                  let exportData: KeywordResult[];
-                  if (mode === 'grouped' && viewMode === 'grouped') {
-                    exportData = groups.map(g => g.parent);
-                  } else {
-                    exportData = processedData;
-                  }
-                  onExport(format, exportData);
-                }}
-                isGroupedView={viewMode === 'grouped'}
-              />
+
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="generic">Generic</SelectItem>
+                    <SelectItem value="our_brand">Our Brand</SelectItem>
+                    <SelectItem value="competitor_brand">Competitor</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <ScoreFilterMultiSelect
+                  selectedScores={scoreFilter}
+                  onScoreChange={setScoreFilter}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <ExportDropdown
+                  onExport={(format, mode) => {
+                    let exportData: KeywordResult[];
+                    if (mode === 'grouped' && viewMode === 'grouped') {
+                      exportData = groups.map(g => g.parent);
+                    } else {
+                      exportData = processedData;
+                    }
+                    onExport(format, exportData);
+                  }}
+                  isGroupedView={viewMode === 'grouped'}
+                />
+              </div>
             </div>
           </div>
           

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback, useMemo } from "react";
-import { Edit2, Trash2, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { Edit2, Trash2, ChevronDown, ChevronUp, Plus, Download, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Segment, GroupedKeywordResult } from "@/types/keyword-analysis";
@@ -12,6 +12,8 @@ interface SegmentsListProps {
   onEditSegment: (segment: Segment) => void;
   onDeleteSegment: (segmentId: string) => void;
   onAddToSegment: (segmentId: string) => void;
+  onExportSegment: (segment: Segment) => void;
+  onRemoveKeywordFromSegment: (segmentId: string, keyword: string) => void;
 }
 
 interface SegmentCardProps {
@@ -20,6 +22,8 @@ interface SegmentCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddMore: () => void;
+  onExport: () => void;
+  onRemoveKeyword: (keyword: string) => void;
 }
 
 const SegmentCard = memo(function SegmentCard({
@@ -28,6 +32,8 @@ const SegmentCard = memo(function SegmentCard({
   onEdit,
   onDelete,
   onAddMore,
+  onExport,
+  onRemoveKeyword,
 }: SegmentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const INITIAL_DISPLAY = 20;
@@ -98,6 +104,17 @@ const SegmentCard = memo(function SegmentCard({
               }}
             >
               <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExport();
+              }}
+            >
+              <Download className="h-4 w-4" />
             </Button>
             <Button
               type="button"
@@ -177,6 +194,17 @@ const SegmentCard = memo(function SegmentCard({
               variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
+                onExport();
+              }}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
                 onEdit();
               }}
             >
@@ -209,11 +237,25 @@ const SegmentCard = memo(function SegmentCard({
                 }`}
               >
                 <span className="font-medium truncate flex-1">{keyword}</span>
-                <span className="text-muted-foreground text-xs ml-4 shrink-0">
-                  {searchVolume !== undefined
-                    ? `Volume: ${searchVolume.toLocaleString()}`
-                    : "Volume: —"}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-muted-foreground text-xs">
+                    {searchVolume !== undefined
+                      ? `Volume: ${searchVolume.toLocaleString()}`
+                      : "Volume: —"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveKeyword(keyword);
+                    }}
+                  >
+                    <X className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -241,6 +283,8 @@ export function SegmentsList({
   onEditSegment,
   onDeleteSegment,
   onAddToSegment,
+  onExportSegment,
+  onRemoveKeywordFromSegment,
 }: SegmentsListProps) {
   // Create lookup map for keyword -> search volume
   const keywordLookup = useMemo(() => {
@@ -279,6 +323,8 @@ export function SegmentsList({
                 onEdit={() => onEditSegment(segment)}
                 onDelete={() => onDeleteSegment(segment.id)}
                 onAddMore={() => onAddToSegment(segment.id)}
+                onExport={() => onExportSegment(segment)}
+                onRemoveKeyword={(keyword) => onRemoveKeywordFromSegment(segment.id, keyword)}
               />
             ))}
           </div>

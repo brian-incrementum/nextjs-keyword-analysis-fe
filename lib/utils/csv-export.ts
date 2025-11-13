@@ -143,3 +143,48 @@ export function exportSegmentsToCSV(
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+export function exportSingleSegmentToCSV(
+  groups: GroupedKeywordResult[],
+  segment: Segment,
+  filename?: string
+): void {
+  // Create a set of keywords in this segment for faster lookup
+  const segmentKeywords = new Set(segment.keywords);
+
+  // Filter groups to only include keywords in this segment
+  const rows = groups
+    .filter((group) => segmentKeywords.has(group.parent.keyword))
+    .map((group) => ({
+      keyword: group.parent.keyword,
+      searchVolume: group.parent.searchVolume || '',
+      type: group.parent.type,
+      score: group.parent.score,
+      reasoning: group.parent.reasoning,
+    }));
+
+  const csv = Papa.unparse(rows, {
+    header: true,
+    columns: ['keyword', 'searchVolume', 'type', 'score', 'reasoning'],
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  // Generate filename from segment name if not provided
+  const sanitizedName = segment.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'segment-keywords';
+  const defaultFilename = `${sanitizedName}-${new Date().toISOString().split('T')[0]}.csv`;
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename || defaultFilename);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

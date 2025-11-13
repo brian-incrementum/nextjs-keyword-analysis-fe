@@ -9,7 +9,7 @@ import { EditSegmentDialog } from "./edit-segment-dialog";
 import { Button } from "@/components/ui/button";
 import type { GroupedKeywordResult, Segment } from "@/types/keyword-analysis";
 import { toast } from "sonner";
-import { exportSegmentsToCSV } from "@/lib/utils/csv-export";
+import { exportSegmentsToCSV, exportSingleSegmentToCSV } from "@/lib/utils/csv-export";
 import { generateId } from "@/lib/utils/id-generator";
 
 interface SegmentsTabProps {
@@ -162,6 +162,40 @@ export function SegmentsTab({
     );
   }, [groups, segments]);
 
+  const handleExportSegment = useCallback(
+    (segment: Segment) => {
+      if (segment.keywords.length === 0) {
+        toast.error("No keywords in this segment to export");
+        return;
+      }
+
+      exportSingleSegmentToCSV(groups, segment);
+      toast.success(`Exported ${segment.keywords.length} keyword${segment.keywords.length !== 1 ? "s" : ""} from "${segment.name}"`);
+    },
+    [groups]
+  );
+
+  const handleRemoveKeywordFromSegment = useCallback(
+    (segmentId: string, keyword: string) => {
+      const segment = segments.find((s) => s.id === segmentId);
+      if (!segment) return;
+
+      const updatedSegments = segments.map((s) => {
+        if (s.id === segmentId) {
+          return {
+            ...s,
+            keywords: s.keywords.filter((k) => k !== keyword),
+          };
+        }
+        return s;
+      });
+
+      onSegmentsChange(updatedSegments);
+      toast.success(`Removed "${keyword}" from segment "${segment.name}"`);
+    },
+    [segments, onSegmentsChange]
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -189,6 +223,8 @@ export function SegmentsTab({
         onEditSegment={handleEditSegment}
         onDeleteSegment={handleDeleteSegment}
         onAddToSegment={handleAddToSegment}
+        onExportSegment={handleExportSegment}
+        onRemoveKeywordFromSegment={handleRemoveKeywordFromSegment}
       />
 
       <CreateSegmentDialog

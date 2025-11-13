@@ -36,7 +36,11 @@ export class APIClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || error.message || `Analysis failed with status ${response.status}`);
+        const errorMessage = typeof error.detail === 'string' ? error.detail
+          : typeof error.message === 'string' ? error.message
+          : error.detail ? JSON.stringify(error.detail)
+          : `Analysis failed with status ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -102,7 +106,11 @@ export class APIClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || error.message || `Root analysis failed with status ${response.status}`);
+        const errorMessage = typeof error.detail === 'string' ? error.detail
+          : typeof error.message === 'string' ? error.message
+          : error.detail ? JSON.stringify(error.detail)
+          : `Root analysis failed with status ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       return (await response.json()) as RootAnalysisResponse;
@@ -137,7 +145,11 @@ export class APIClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || error.message || `Negative phrase generation failed with status ${response.status}`);
+        const errorMessage = typeof error.detail === 'string' ? error.detail
+          : typeof error.message === 'string' ? error.message
+          : error.detail ? JSON.stringify(error.detail)
+          : `Negative phrase generation failed with status ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       return (await response.json()) as NegativePhraseResponse;

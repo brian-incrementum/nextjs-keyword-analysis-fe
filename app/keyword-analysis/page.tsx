@@ -124,7 +124,7 @@ export default function KeywordAnalysisPage() {
           }
           return {
             keyword,
-            search_volume: searchVolume ?? null,
+            search_volume: searchVolume ?? 0,
           } as RootAnalysisMember;
         })
         .filter((member): member is RootAnalysisMember => member !== null);
@@ -137,7 +137,7 @@ export default function KeywordAnalysisPage() {
       } else {
         rootMembers = keywordList.map(keyword => ({
           keyword,
-          search_volume: keywordMeta?.[keyword.toLowerCase()]?.searchVolume,
+          search_volume: keywordMeta?.[keyword.toLowerCase()]?.searchVolume ?? 0,
         }));
       }
 
@@ -159,7 +159,10 @@ export default function KeywordAnalysisPage() {
           });
           setRootAnalysis(response);
         } catch (error) {
-          console.error('Root analysis error:', error);
+          const errorMsg = error instanceof Error ? error.message
+            : typeof error === 'string' ? error
+            : JSON.stringify(error);
+          console.error('Root analysis error:', errorMsg);
           setRootError(error instanceof Error ? error.message : 'Failed to load root analysis');
           toast.error('Root analysis failed. View the root tab for details.');
         } finally {
@@ -191,7 +194,10 @@ export default function KeywordAnalysisPage() {
           });
           setNegativePhrases(phrases);
         } catch (error) {
-          console.error('Negative phrases error:', error);
+          const errorMsg = error instanceof Error ? error.message
+            : typeof error === 'string' ? error
+            : JSON.stringify(error);
+          console.error('Negative phrases error:', errorMsg);
           setNegativePhrasesError(error instanceof Error ? error.message : 'Failed to generate negative phrases');
           toast.error('Negative phrases generation failed. View the Negative Phrases tab for details.');
         } finally {

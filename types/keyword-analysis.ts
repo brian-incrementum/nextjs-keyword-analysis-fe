@@ -99,7 +99,7 @@ export interface CSVData {
 
 export interface RootAnalysisMember {
   keyword: string;
-  search_volume?: number | null;
+  search_volume: number;
 }
 
 export interface RootAnalysisResult {

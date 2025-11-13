@@ -136,8 +136,13 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
     const reader = new FileReader();
     
     reader.onload = (e) => {
-      const text = e.target?.result as string;
-      
+      let text = e.target?.result as string;
+
+      // Remove UTF-8 BOM if present
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.substring(1);
+      }
+
       // Parse with Papa Parse (without worker for now to avoid issues)
       Papa.parse(text, {
         header: true,
@@ -346,7 +351,12 @@ export function CSVUploadComponent({ onUpload, isDisabled = false }: CSVUploadPr
     const reader = new FileReader();
 
     reader.onload = (e) => {
-      const text = e.target?.result as string;
+      let text = e.target?.result as string;
+
+      // Remove UTF-8 BOM if present
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.substring(1);
+      }
 
       Papa.parse(text, {
         header: true,

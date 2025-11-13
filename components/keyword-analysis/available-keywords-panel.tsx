@@ -38,13 +38,19 @@ export function AvailableKeywordsPanel({
   const [scoreFilter, setScoreFilter] = useState<string[]>(["all"]);
   const [includeKeywords, setIncludeKeywords] = useState<string[]>([]);
   const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
+  const [minVolume, setMinVolume] = useState<string>("");
+  const [maxVolume, setMaxVolume] = useState<string>("");
   const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedMinVolume = useDebounce(minVolume, 300);
+  const debouncedMaxVolume = useDebounce(maxVolume, 300);
 
   // Check if any filters are active
   const hasActiveFilters = typeFilter !== "all" ||
     !scoreFilter.includes("all") ||
     includeKeywords.length > 0 ||
-    excludeKeywords.length > 0;
+    excludeKeywords.length > 0 ||
+    minVolume !== "" ||
+    maxVolume !== "";
 
   // Clear all filters
   const clearAllFilters = useCallback(() => {
@@ -52,6 +58,8 @@ export function AvailableKeywordsPanel({
     setScoreFilter(["all"]);
     setIncludeKeywords([]);
     setExcludeKeywords([]);
+    setMinVolume("");
+    setMaxVolume("");
     setSearchTerm("");
   }, []);
 
@@ -105,8 +113,24 @@ export function AvailableKeywordsPanel({
       );
     }
 
+    // Apply search volume range filter
+    const minVol = debouncedMinVolume ? parseFloat(debouncedMinVolume) : null;
+    const maxVol = debouncedMaxVolume ? parseFloat(debouncedMaxVolume) : null;
+
+    if (minVol !== null && !isNaN(minVol)) {
+      filtered = filtered.filter((group) =>
+        group.parent.searchVolume !== undefined && group.parent.searchVolume >= minVol
+      );
+    }
+
+    if (maxVol !== null && !isNaN(maxVol)) {
+      filtered = filtered.filter((group) =>
+        group.parent.searchVolume !== undefined && group.parent.searchVolume <= maxVol
+      );
+    }
+
     return filtered;
-  }, [availableKeywords, typeFilter, scoreFilter, includeKeywords, excludeKeywords, debouncedSearch]);
+  }, [availableKeywords, typeFilter, scoreFilter, includeKeywords, excludeKeywords, debouncedSearch, debouncedMinVolume, debouncedMaxVolume]);
 
   const toggleKeyword = useCallback(
     (keyword: string) => {
@@ -223,6 +247,35 @@ export function AvailableKeywordsPanel({
                 tags={excludeKeywords}
                 onAddTag={(tag) => setExcludeKeywords([...excludeKeywords, tag])}
                 onRemoveTag={(tag) => setExcludeKeywords(excludeKeywords.filter((k) => k !== tag))}
+              />
+            </div>
+          </div>
+
+          {/* Third row: Search Volume Range */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Min Search Volume */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Min Search Volume</label>
+              <Input
+                type="number"
+                placeholder="Min volume..."
+                value={minVolume}
+                onChange={(e) => setMinVolume(e.target.value)}
+                min="0"
+                className="h-9"
+              />
+            </div>
+
+            {/* Max Search Volume */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Max Search Volume</label>
+              <Input
+                type="number"
+                placeholder="Max volume..."
+                value={maxVolume}
+                onChange={(e) => setMaxVolume(e.target.value)}
+                min="0"
+                className="h-9"
               />
             </div>
           </div>

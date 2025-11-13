@@ -78,9 +78,13 @@ export function VirtualizedResultsTable({
   const [scoreFilter, setScoreFilter] = useState<string[]>(['all']);
   const [includeKeywords, setIncludeKeywords] = useState<string[]>([]);
   const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
-  
+  const [minVolume, setMinVolume] = useState<string>('');
+  const [maxVolume, setMaxVolume] = useState<string>('');
+
   // Debounce the global filter to prevent stuttering
   const debouncedGlobalFilter = useDebounce(globalFilter, 200);
+  const debouncedMinVolume = useDebounce(minVolume, 300);
+  const debouncedMaxVolume = useDebounce(maxVolume, 300);
 
   // Apply filters and sorting
   const processedData = useMemo(() => {
@@ -129,7 +133,23 @@ export function VirtualizedResultsTable({
         )
       );
     }
-    
+
+    // Apply search volume range filter
+    const minVol = debouncedMinVolume ? parseFloat(debouncedMinVolume) : null;
+    const maxVol = debouncedMaxVolume ? parseFloat(debouncedMaxVolume) : null;
+
+    if (minVol !== null && !isNaN(minVol)) {
+      filtered = filtered.filter(item =>
+        item.searchVolume !== undefined && item.searchVolume >= minVol
+      );
+    }
+
+    if (maxVol !== null && !isNaN(maxVol)) {
+      filtered = filtered.filter(item =>
+        item.searchVolume !== undefined && item.searchVolume <= maxVol
+      );
+    }
+
     // Apply sorting
     if (sortConfig) {
       filtered.sort((a, b) => {
@@ -143,7 +163,7 @@ export function VirtualizedResultsTable({
     }
     
     return filtered;
-  }, [results, typeFilter, scoreFilter, debouncedGlobalFilter, sortConfig, includeKeywords, excludeKeywords]);
+  }, [results, typeFilter, scoreFilter, debouncedGlobalFilter, sortConfig, includeKeywords, excludeKeywords, debouncedMinVolume, debouncedMaxVolume]);
 
   // Flatten groups for grouped view
   const flattenedGroups = useMemo(() => {
@@ -196,14 +216,30 @@ export function VirtualizedResultsTable({
         !excludeKeywords.some(keyword =>
           g.parent.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
           g.parent.reasoning?.toLowerCase().includes(keyword.toLowerCase()) ||
-          g.variations.some(v => 
+          g.variations.some(v =>
             v.keyword.toLowerCase().includes(keyword.toLowerCase()) ||
             v.reasoning?.toLowerCase().includes(keyword.toLowerCase())
           )
         )
       );
     }
-    
+
+    // Apply search volume range filter to groups
+    const minVol = debouncedMinVolume ? parseFloat(debouncedMinVolume) : null;
+    const maxVol = debouncedMaxVolume ? parseFloat(debouncedMaxVolume) : null;
+
+    if (minVol !== null && !isNaN(minVol)) {
+      filteredGroups = filteredGroups.filter(g =>
+        g.parent.searchVolume !== undefined && g.parent.searchVolume >= minVol
+      );
+    }
+
+    if (maxVol !== null && !isNaN(maxVol)) {
+      filteredGroups = filteredGroups.filter(g =>
+        g.parent.searchVolume !== undefined && g.parent.searchVolume <= maxVol
+      );
+    }
+
     for (const group of filteredGroups) {
       flattened.push({
         ...group.parent,
@@ -217,7 +253,7 @@ export function VirtualizedResultsTable({
     }
     
     return flattened;
-  }, [groups, viewMode, typeFilter, scoreFilter, debouncedGlobalFilter, includeKeywords, excludeKeywords]);
+  }, [groups, viewMode, typeFilter, scoreFilter, debouncedGlobalFilter, includeKeywords, excludeKeywords, debouncedMinVolume, debouncedMaxVolume]);
 
   const handleSort = useCallback((key: keyof KeywordResult) => {
     setSortConfig(current => {
@@ -440,7 +476,7 @@ export function VirtualizedResultsTable({
                 onRemoveTag={handleRemoveIncludeKeyword}
               />
             </div>
-            
+
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Exclude Keywords
@@ -450,6 +486,34 @@ export function VirtualizedResultsTable({
                 tags={excludeKeywords}
                 onAddTag={handleAddExcludeKeyword}
                 onRemoveTag={handleRemoveExcludeKeyword}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Min Search Volume
+              </label>
+              <Input
+                type="number"
+                placeholder="Min volume..."
+                value={minVolume}
+                onChange={(e) => setMinVolume(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Max Search Volume
+              </label>
+              <Input
+                type="number"
+                placeholder="Max volume..."
+                value={maxVolume}
+                onChange={(e) => setMaxVolume(e.target.value)}
+                min="0"
               />
             </div>
           </div>

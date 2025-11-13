@@ -389,7 +389,7 @@ export function ResultsTableWithGrouping({ results, onExport, summary }: Results
 
           <div ref={containerRef} className="border rounded-lg overflow-auto max-h-[70vh] relative">
             {viewMode === 'grouped' ? (
-              <GroupedKeywordTable groups={groupedKeywords} />
+              <GroupedKeywordTable groups={groupedKeywords} sortConfig={null} onSort={() => {}} />
             ) : (
               <>
                 <table className="w-full table-fixed text-sm">

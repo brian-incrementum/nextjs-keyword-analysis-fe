@@ -222,7 +222,7 @@ export default function TestGroupingPage() {
           <h2 className="text-xl font-semibold mb-3">Grouped Keywords (Table)</h2>
           <Card>
             <CardContent className="p-0">
-              <GroupedKeywordTable groups={groupedKeywords} />
+              <GroupedKeywordTable groups={groupedKeywords} sortConfig={null} onSort={() => {}} />
             </CardContent>
           </Card>
         </div>

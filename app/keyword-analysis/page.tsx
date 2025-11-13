@@ -456,17 +456,44 @@ export default function KeywordAnalysisPage() {
     }
   }, [keywords, startAnalysis, csvData]);
 
-  const handleExport = useCallback((format: 'csv' | 'xlsx', customData?: KeywordResult[]) => {
+  const handleExport = useCallback((format: 'csv' | 'xlsx', customData?: KeywordResult[], mode?: 'flat' | 'grouped' | 'filtered-all' | 'filtered-parents') => {
     // Use custom data if provided (for grouped exports), otherwise use all results
     const dataToExport = customData || results;
-    
+
     if (dataToExport.length === 0) {
       toast.error('No results to export');
       return;
     }
 
     const timestamp = new Date().toISOString().split('T')[0];
-    const exportMode = customData && customData.length < results.length ? 'grouped' : 'all';
+
+    // Determine export mode and filename suffix
+    let exportMode: string;
+    let toastMessage: string;
+
+    switch (mode) {
+      case 'flat':
+        exportMode = 'all';
+        toastMessage = 'all keywords';
+        break;
+      case 'grouped':
+        exportMode = 'parents';
+        toastMessage = 'parent keywords only';
+        break;
+      case 'filtered-all':
+        exportMode = 'filtered-all';
+        toastMessage = 'filtered view (all keywords)';
+        break;
+      case 'filtered-parents':
+        exportMode = 'filtered-parents';
+        toastMessage = 'filtered view (parents only)';
+        break;
+      default:
+        // Fallback to old logic if mode not provided
+        exportMode = customData && customData.length < results.length ? 'grouped' : 'all';
+        toastMessage = exportMode === 'grouped' ? 'parent keywords only' : 'all keywords';
+    }
+
     const filename = `keyword-analysis-${exportMode}-${timestamp}`;
 
     // Prepare export data with all fields (excluding relevance)
@@ -480,10 +507,10 @@ export default function KeywordAnalysisPage() {
 
     if (format === 'csv') {
       exportToCSV(exportData as KeywordResult[], `${filename}.csv`);
-      toast.success(`CSV exported successfully (${exportMode === 'grouped' ? 'parent keywords only' : 'all keywords'})`);
+      toast.success(`CSV exported successfully (${toastMessage})`);
     } else {
       exportToExcel(exportData as KeywordResult[], filename);
-      toast.success(`Excel file exported successfully (${exportMode === 'grouped' ? 'parent keywords only' : 'all keywords'})`);
+      toast.success(`Excel file exported successfully (${toastMessage})`);
     }
   }, [results]);
 

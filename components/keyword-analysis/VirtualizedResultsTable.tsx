@@ -29,7 +29,7 @@ import type { KeywordResult, GroupedKeywordResult } from '@/types/keyword-analys
 interface VirtualizedResultsTableProps {
   results: KeywordResult[];
   groups: GroupedKeywordResult[];
-  onExport: (format: 'csv' | 'xlsx', exportData?: KeywordResult[]) => void;
+  onExport: (format: 'csv' | 'xlsx', exportData?: KeywordResult[], mode?: 'flat' | 'grouped' | 'filtered-all' | 'filtered-parents') => void;
   summary?: {
     average_score: number;
     total_keywords: number;
@@ -167,19 +167,14 @@ export function VirtualizedResultsTable({
     return filtered;
   }, [results, typeFilter, scoreFilter, debouncedGlobalFilter, sortConfig, includeKeywords, excludeKeywords, debouncedMinVolume, debouncedMaxVolume]);
 
-  // Flatten groups for grouped view
-  const flattenedGroups = useMemo(() => {
-    if (viewMode !== 'grouped') return [];
-    
-    const flattened: (KeywordResult & { isParent?: boolean; groupSize?: number })[] = [];
-    
-    // Apply same filters to groups
-    let filteredGroups = groups;
+  // Apply filters to groups (used for both display and export)
+  const filteredGroups = useMemo(() => {
+    let filtered = groups;
     if (typeFilter !== 'all') {
-      filteredGroups = filteredGroups.filter(g => g.parent.type === typeFilter);
+      filtered = filtered.filter(g => g.parent.type === typeFilter);
     }
     if (!scoreFilter.includes('all') && scoreFilter.length > 0) {
-      filteredGroups = filteredGroups.filter(g => {
+      filtered = filtered.filter(g => {
         if (scoreFilter.includes('high') && g.parent.score >= 8) return true;
         if (scoreFilter.includes('medium') && g.parent.score >= 5 && g.parent.score <= 7) return true;
         if (scoreFilter.includes('low') && g.parent.score <= 4) return true;
@@ -188,19 +183,19 @@ export function VirtualizedResultsTable({
     }
     if (debouncedGlobalFilter) {
       const searchTerm = debouncedGlobalFilter.toLowerCase();
-      filteredGroups = filteredGroups.filter(g => 
+      filtered = filtered.filter(g =>
         g.parent.keyword.toLowerCase().includes(searchTerm) ||
         g.parent.reasoning?.toLowerCase().includes(searchTerm) ||
-        g.variations.some(v => 
+        g.variations.some(v =>
           v.keyword.toLowerCase().includes(searchTerm) ||
           v.reasoning?.toLowerCase().includes(searchTerm)
         )
       );
     }
-    
+
     // Apply include keywords filter to groups
     if (includeKeywords.length > 0) {
-      filteredGroups = filteredGroups.filter(g => {
+      filtered = filtered.filter(g => {
         const keywordLower = g.parent.keyword.toLowerCase();
         return includeKeywords.every((keyword) => {
           const searchLower = keyword.toLowerCase();
@@ -211,7 +206,7 @@ export function VirtualizedResultsTable({
 
     // Apply exclude keywords filter to groups
     if (excludeKeywords.length > 0) {
-      filteredGroups = filteredGroups.filter(g => {
+      filtered = filtered.filter(g => {
         const keywordLower = g.parent.keyword.toLowerCase();
         return !excludeKeywords.some((keyword) => {
           const searchLower = keyword.toLowerCase();
@@ -225,16 +220,37 @@ export function VirtualizedResultsTable({
     const maxVol = debouncedMaxVolume ? parseFloat(debouncedMaxVolume) : null;
 
     if (minVol !== null && !isNaN(minVol)) {
-      filteredGroups = filteredGroups.filter(g =>
+      filtered = filtered.filter(g =>
         g.parent.searchVolume !== undefined && g.parent.searchVolume >= minVol
       );
     }
 
     if (maxVol !== null && !isNaN(maxVol)) {
-      filteredGroups = filteredGroups.filter(g =>
+      filtered = filtered.filter(g =>
         g.parent.searchVolume !== undefined && g.parent.searchVolume <= maxVol
       );
     }
+
+    // Apply sorting to groups based on parent keyword properties
+    if (sortConfig) {
+      filtered.sort((a, b) => {
+        const aValue = a.parent[sortConfig.key] ?? '';
+        const bValue = b.parent[sortConfig.key] ?? '';
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [groups, typeFilter, scoreFilter, debouncedGlobalFilter, includeKeywords, excludeKeywords, debouncedMinVolume, debouncedMaxVolume, sortConfig]);
+
+  // Flatten groups for grouped view
+  const flattenedGroups = useMemo(() => {
+    if (viewMode !== 'grouped') return [];
+
+    const flattened: (KeywordResult & { isParent?: boolean; groupSize?: number })[] = [];
 
     for (const group of filteredGroups) {
       flattened.push({
@@ -247,9 +263,9 @@ export function VirtualizedResultsTable({
         flattened.push(variation);
       }
     }
-    
+
     return flattened;
-  }, [groups, viewMode, typeFilter, scoreFilter, debouncedGlobalFilter, includeKeywords, excludeKeywords, debouncedMinVolume, debouncedMaxVolume]);
+  }, [filteredGroups, viewMode]);
 
   const handleSort = useCallback((key: keyof KeywordResult) => {
     setSortConfig(current => {
@@ -448,11 +464,25 @@ export function VirtualizedResultsTable({
                   onExport={(format, mode) => {
                     let exportData: KeywordResult[];
                     if (mode === 'grouped' && viewMode === 'grouped') {
+                      // Original: Export all parent keywords (unfiltered)
                       exportData = groups.map(g => g.parent);
+                    } else if (mode === 'filtered-all') {
+                      // New: Export filtered keywords (all variations)
+                      exportData = processedData;
+                    } else if (mode === 'filtered-parents' && viewMode === 'grouped') {
+                      // New: Export filtered parent keywords only
+                      exportData = filteredGroups.map(g => g.parent);
+                    } else if (mode === 'filtered-parents' && viewMode === 'flat') {
+                      // If in flat view, treat filtered-parents same as filtered-all
+                      exportData = processedData;
+                    } else if (mode === 'flat') {
+                      // Original: Export all keywords (unfiltered)
+                      exportData = results;
                     } else {
+                      // Default to processed data
                       exportData = processedData;
                     }
-                    onExport(format, exportData);
+                    onExport(format, exportData, mode);
                   }}
                   isGroupedView={viewMode === 'grouped'}
                 />

@@ -1,20 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, TrendingUp, Package, Zap } from 'lucide-react';
+import { ChevronDown, ChevronRight, TrendingUp, Package, Zap, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { GroupedKeywordResult, KeywordResult } from '@/types/keyword-analysis';
 
+type SortConfig = {
+  key: keyof KeywordResult;
+  direction: 'asc' | 'desc';
+} | null;
+
 interface GroupedKeywordTableProps {
   groups: GroupedKeywordResult[];
+  sortConfig: SortConfig;
+  onSort: (key: keyof KeywordResult) => void;
 }
 
 interface ExpandedState {
   [key: string]: boolean;
 }
 
-export function GroupedKeywordTable({ groups }: GroupedKeywordTableProps) {
+export function GroupedKeywordTable({ groups, sortConfig: _sortConfig, onSort }: GroupedKeywordTableProps) {
   const [expandedRows, setExpandedRows] = useState<ExpandedState>({});
   
   const toggleExpanded = (keyword: string) => {
@@ -116,16 +123,37 @@ export function GroupedKeywordTable({ groups }: GroupedKeywordTableProps) {
       <thead className="sticky top-0 bg-white z-20 shadow-sm">
         <tr className="border-b">
           <th className="w-[300px] px-3 py-2 text-left align-middle font-medium bg-white">
-            <div className="h-8 flex items-center">Keyword</div>
+            <Button
+              variant="ghost"
+              onClick={() => onSort('keyword')}
+              className="h-8 px-2 w-full justify-start"
+            >
+              Keyword
+              <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0" />
+            </Button>
           </th>
           <th className="w-[140px] px-3 py-2 text-left align-middle font-medium bg-white">
-            <div className="h-8 flex items-center">Search Vol.</div>
+            <Button
+              variant="ghost"
+              onClick={() => onSort('searchVolume')}
+              className="h-8 px-2 w-full justify-start"
+            >
+              Search Vol.
+              <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0" />
+            </Button>
           </th>
           <th className="w-[120px] px-3 py-2 text-left align-middle font-medium bg-white">
             <div className="h-8 flex items-center">Type</div>
           </th>
           <th className="w-[180px] px-3 py-2 text-left align-middle font-medium bg-white">
-            <div className="h-8 flex items-center">Score</div>
+            <Button
+              variant="ghost"
+              onClick={() => onSort('score')}
+              className="h-8 px-2 w-full justify-start"
+            >
+              Score
+              <ArrowUpDown className="ml-2 h-4 w-4 flex-shrink-0" />
+            </Button>
           </th>
           <th className="px-3 py-2 text-left align-middle font-medium bg-white">
             <div className="h-8 flex items-center">Analysis</div>

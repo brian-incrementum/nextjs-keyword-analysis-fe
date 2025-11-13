@@ -13,10 +13,10 @@ import {
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { FileDown, Download, Layers, List } from 'lucide-react';
+import { FileDown, Download, Layers, List, Filter } from 'lucide-react';
 
 interface ExportDropdownProps {
-  onExport: (format: 'csv' | 'xlsx', mode: 'flat' | 'grouped') => void;
+  onExport: (format: 'csv' | 'xlsx', mode: 'flat' | 'grouped' | 'filtered-all' | 'filtered-parents') => void;
   isGroupedView?: boolean;
 }
 
@@ -54,6 +54,21 @@ export function ExportDropdown({ onExport, isGroupedView: _isGroupedView = false
                 <span className="text-xs text-muted-foreground">Highest volume per group</span>
               </div>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onExport('csv', 'filtered-all')}>
+              <Filter className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Filtered View - All</span>
+                <span className="text-xs text-muted-foreground">Export visible keywords</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onExport('csv', 'filtered-parents')}>
+              <Filter className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Filtered View - Parents</span>
+                <span className="text-xs text-muted-foreground">Export visible parents only</span>
+              </div>
+            </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         
@@ -76,6 +91,21 @@ export function ExportDropdown({ onExport, isGroupedView: _isGroupedView = false
               <div className="flex flex-col">
                 <span>Parent Keywords Only</span>
                 <span className="text-xs text-muted-foreground">Highest volume per group</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onExport('xlsx', 'filtered-all')}>
+              <Filter className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Filtered View - All</span>
+                <span className="text-xs text-muted-foreground">Export visible keywords</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onExport('xlsx', 'filtered-parents')}>
+              <Filter className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>Filtered View - Parents</span>
+                <span className="text-xs text-muted-foreground">Export visible parents only</span>
               </div>
             </DropdownMenuItem>
           </DropdownMenuSubContent>
